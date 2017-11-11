@@ -1,11 +1,10 @@
 package main
 
 import (
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"flag"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -13,49 +12,58 @@ import (
 	"github.com/petethepig/mitm/ca"
 )
 
-func readCertAndKey(caCertPath, caKeyPath string) (*x509.Certificate, *rsa.PrivateKey, error) {
-	certBytes, err := ioutil.ReadFile(caCertPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	keyBytes, err := ioutil.ReadFile(caKeyPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	cert, err := x509.ParseCertificate(certBytes)
-	if err != nil {
-		return nil, nil, err
-	}
-	key, err := x509.ParsePKCS1PrivateKey(keyBytes)
-	if err != nil {
-		return nil, nil, err
-	}
-	return cert, key, nil
-}
-
 func main() {
 	log.SetFlags(0)
 
 	var (
-		bindAddr   string
-		caCertPath string
-		caKeyPath  string
+		bindAddr       string
+		caCertPath     string
+		caKeyPath      string
+		generateCaPair bool
 	)
 
 	flag.StringVar(&bindAddr, "bind-addr", ":443", "bind address")
-	flag.StringVar(&caCertPath, "ca-cert", "", "path to CA certificate path")
-	flag.StringVar(&caKeyPath, "ca-key", "", "path to CA key path")
+	flag.StringVar(&caCertPath, "ca-cert", "ca-cert.pem", "path to CA certificate path")
+	flag.StringVar(&caKeyPath, "ca-key", "ca-key.pem", "path to CA key path")
+	flag.BoolVar(&generateCaPair, "init", false, "call with this flag to generate CA key and cert")
 	flag.Parse()
 
-	if caCertPath == "" || caKeyPath == "" {
+	if !fileExists(caCertPath) || !fileExists(caKeyPath) {
 		flag.Usage()
 		os.Exit(2)
 	}
 
-	cert, key, err := readCertAndKey(caCertPath, caKeyPath)
+	if generateCaPair {
+		cert, key, err := ca.GeneratePair()
+		if err != nil {
+			panic(err)
+		}
+
+		certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+		keyPem := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+
+		err = writePem(caCertPath, certPem)
+		if err != nil {
+			panic(err)
+		}
+
+		err = writePem(caKeyPath, keyPem)
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
+
+	cert, err := readCert(caCertPath)
 	if err != nil {
 		panic(err)
 	}
+
+	key, err := readKey(caKeyPath)
+	if err != nil {
+		panic(err)
+	}
+
 	ca := ca.New(cert, key)
 
 	config := &tls.Config{

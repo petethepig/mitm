@@ -17,4 +17,6 @@ Usage of mitm:
       path to CA certificate path
   -ca-key string
       path to CA key path
+  -init
+      call with this flag to generate CA key and cert
 ```
