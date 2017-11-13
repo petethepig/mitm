@@ -66,6 +66,7 @@ func GeneratePair() (*x509.Certificate, *rsa.PrivateKey, error) {
 
 	return cert, key, nil
 }
+
 func (ca *CertificateAuthority) IssueCert(hostname string) (*tls.Certificate, error) {
 	certI, ok := ca.cache.Load(hostname)
 	if ok {

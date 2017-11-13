@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 
 	"github.com/petethepig/mitm/ca"
 )
@@ -77,22 +78,24 @@ func main() {
 		panic(err)
 	}
 
-	for {
+	for i := 0; true; i++ {
 		conn, err := l.Accept()
 		if err != nil {
 			return
 		}
 
-		go handleConn(conn.(*tls.Conn))
+		go handleConn(i, conn.(*tls.Conn))
 	}
 }
 
-func handleConn(conn *tls.Conn) {
+func handleConn(id int, conn *tls.Conn) {
 	defer conn.Close()
+
+	logger := log.New(os.Stdout, padLeft(strconv.Itoa(id%1000), " ", 3)+" ", 0)
 
 	err := conn.Handshake()
 	if err != nil {
-		log.Println("handshake failed", err)
+		logger.Println("handshake failed", err)
 		return
 	}
 
@@ -101,7 +104,7 @@ func handleConn(conn *tls.Conn) {
 	_, port, err := net.SplitHostPort(localAddr)
 
 	if err != nil {
-		log.Println("failed to split host and port", localAddr)
+		logger.Println("failed to split host and port", localAddr)
 		return
 	}
 
@@ -113,10 +116,14 @@ func handleConn(conn *tls.Conn) {
 	upstream, err := tls.Dial("tcp", upstreamAddr, clientConfig)
 
 	if err != nil {
-		log.Println("failed to establish upstream connection", err)
+		logger.Println("failed to establish upstream connection", err)
 		return
 	}
 
-	log.Printf("connected %s and %s", conn.RemoteAddr().String(), hostname)
-	duplex(conn, upstream)
+	logger.Printf("connected %s and %s", conn.RemoteAddr().String(), hostname)
+	duplex(
+		logConn{conn, logger, dirUpstream},
+		logConn{upstream, logger, dirDownstream},
+	)
+	logger.Printf("connection closed")
 }
