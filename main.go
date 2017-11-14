@@ -29,11 +29,6 @@ func main() {
 	flag.BoolVar(&generateCaPair, "init", false, "call with this flag to generate CA key and cert")
 	flag.Parse()
 
-	if !fileExists(caCertPath) || !fileExists(caKeyPath) {
-		flag.Usage()
-		os.Exit(2)
-	}
-
 	if generateCaPair {
 		cert, key, err := ca.GeneratePair()
 		if err != nil {
@@ -53,6 +48,11 @@ func main() {
 			panic(err)
 		}
 		return
+	}
+
+	if !fileExists(caCertPath) || !fileExists(caKeyPath) {
+		flag.Usage()
+		os.Exit(2)
 	}
 
 	cert, err := readCert(caCertPath)
