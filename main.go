@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/petethepig/mitm/ca"
+	"github.com/petethepig/mitm/dns"
 )
 
 func main() {
@@ -49,6 +50,12 @@ func main() {
 		}
 		return
 	}
+
+	go func() {
+		dns.StartServer(":53", "8.8.8.8:53", map[string]string{
+			"google.com": "127.0.0.1",
+		})
+	}()
 
 	if !fileExists(caCertPath) || !fileExists(caKeyPath) {
 		flag.Usage()
