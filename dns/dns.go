@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"log"
 	"net"
 	"strings"
 
@@ -34,10 +35,16 @@ func StartServer(bindAddr, upstreamAddr string, overrides map[string]string) *Se
 	d.tcpServer = &dns.Server{Addr: bindAddr, Net: "tcp", Handler: dns.HandlerFunc(d.handleRequest)}
 
 	go func() {
-		d.udpServer.ListenAndServe()
+		err := d.udpServer.ListenAndServe()
+		if err != nil {
+			log.Println("Error listening on UDP endpoint:", err)
+		}
 	}()
 	go func() {
-		d.tcpServer.ListenAndServe()
+		err := d.tcpServer.ListenAndServe()
+		if err != nil {
+			log.Println("Error listening on TCP endpoint:", err)
+		}
 	}()
 
 	return d
@@ -50,6 +57,7 @@ func (d *Server) handleRequest(w dns.ResponseWriter, req *dns.Msg) {
 	}
 
 	questionHostname := req.Question[0].Name
+	log.Println("Incoming DNS query for:", questionHostname)
 
 	for hostname, ipAddr := range d.overrides {
 		if strings.HasSuffix(questionHostname, hostname) {
