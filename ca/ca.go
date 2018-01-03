@@ -52,6 +52,7 @@ func GeneratePair() (*x509.Certificate, *rsa.PrivateKey, error) {
 		NotAfter:              notAfter,
 		KeyUsage:              x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
+		IsCA: true,
 	}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
